@@ -61,9 +61,11 @@ function findExecutableInDir(dir) {
 function getPuppeteerExecutablePath() {
   const originalPuppeteerPath = process.env.PUPPETEER_EXECUTABLE_PATH;
   const originalChromeBin = process.env.CHROME_BIN;
+  const originalCacheDir = process.env.PUPPETEER_CACHE_DIR;
 
   delete process.env.PUPPETEER_EXECUTABLE_PATH;
   delete process.env.CHROME_BIN;
+  process.env.PUPPETEER_CACHE_DIR = path.join(process.cwd(), '.cache', 'puppeteer');
   delete require.cache[require.resolve('puppeteer')];
 
   const puppeteer = require('puppeteer');
@@ -75,6 +77,12 @@ function getPuppeteerExecutablePath() {
 
   if (originalChromeBin) {
     process.env.CHROME_BIN = originalChromeBin;
+  }
+
+  if (originalCacheDir) {
+    process.env.PUPPETEER_CACHE_DIR = originalCacheDir;
+  } else {
+    delete process.env.PUPPETEER_CACHE_DIR;
   }
 
   return executable;
@@ -89,9 +97,9 @@ function resolveChromeExecutable(env) {
 
   const cacheDirs = [
     env.PUPPETEER_CACHE_DIR,
-    path.join(os.homedir(), '.cache', 'puppeteer'),
     path.join(process.cwd(), '.cache', 'puppeteer'),
     path.join(process.cwd(), 'node_modules', '.cache', 'puppeteer'),
+    path.join(os.homedir(), '.cache', 'puppeteer'),
   ];
 
   for (const cacheDir of cacheDirs) {

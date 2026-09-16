@@ -2,13 +2,15 @@ services:
   - type: web
     name: xautomate-backend
     runtime: node
-    buildCommand: unset PUPPETEER_EXECUTABLE_PATH CHROME_BIN && npm ci && npx puppeteer browsers install chrome && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+    buildCommand: unset PUPPETEER_EXECUTABLE_PATH CHROME_BIN && PUPPETEER_CACHE_DIR=.cache/puppeteer npm ci && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
     startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: POST_HEADLESS
         value: "true"
+      - key: PUPPETEER_CACHE_DIR
+        value: .cache/puppeteer
       - key: MONGODB_URI
         sync: false
       - key: MONGODB_DB_NAME
