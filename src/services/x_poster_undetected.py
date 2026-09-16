@@ -11,6 +11,7 @@ import json
 import argparse
 import re
 import subprocess
+import tempfile
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 import undetected_chromedriver as uc
@@ -130,23 +131,48 @@ def click_resiliently(driver, element, label="element"):
     log(f"[*] Trying JavaScript click for {label}...")
     driver.execute_script("arguments[0].click();", element)
 
-def create_driver():
-    log("[*] Starting undetected Chrome...")
-    log("[*] Auto-detecting Chrome version...")
-
+def build_chrome_options(chrome_binary=None):
     options = uc.ChromeOptions()
-    chrome_binary = os.getenv("PUPPETEER_EXECUTABLE_PATH") or os.getenv("CHROME_BIN")
+
     if chrome_binary:
         options.binary_location = chrome_binary
 
     if os.getenv("POST_HEADLESS", "false").lower() == "true":
         options.add_argument("--headless=new")
 
+    user_data_dir = tempfile.mkdtemp(prefix="xautomate-chrome-")
+    options.add_argument(f"--user-data-dir={user_data_dir}")
     options.add_argument("--no-sandbox")
+    options.add_argument("--disable-setuid-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--start-maximized")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-background-networking")
+    options.add_argument("--disable-background-timer-throttling")
+    options.add_argument("--disable-client-side-phishing-detection")
+    options.add_argument("--disable-default-apps")
+    options.add_argument("--disable-features=Translate,BackForwardCache,VizDisplayCompositor")
+    options.add_argument("--disable-hang-monitor")
+    options.add_argument("--disable-popup-blocking")
+    options.add_argument("--disable-prompt-on-repost")
+    options.add_argument("--disable-sync")
+    options.add_argument("--metrics-recording-only")
+    options.add_argument("--mute-audio")
+    options.add_argument("--no-first-run")
+    options.add_argument("--no-default-browser-check")
+    options.add_argument("--password-store=basic")
+    options.add_argument("--use-mock-keychain")
+    options.add_argument("--window-size=1365,768")
     options.page_load_strategy = "eager"
+    return options
+
+def create_driver():
+    log("[*] Starting undetected Chrome...")
+    log("[*] Auto-detecting Chrome version...")
+
+    chrome_binary = os.getenv("PUPPETEER_EXECUTABLE_PATH") or os.getenv("CHROME_BIN")
+    options = build_chrome_options(chrome_binary)
 
     try:
         driver = uc.Chrome(options=options, version_main=None, suppress_banner=True)
@@ -163,18 +189,7 @@ def create_driver():
             ).decode().split()[-1].split('.')[0]
             log(f"[*] Detected Chrome version: {chrome_version}")
 
-            options_retry = uc.ChromeOptions()
-            if chrome_binary:
-                options_retry.binary_location = chrome_binary
-
-            if os.getenv("POST_HEADLESS", "false").lower() == "true":
-                options_retry.add_argument("--headless=new")
-
-            options_retry.add_argument("--no-sandbox")
-            options_retry.add_argument("--disable-dev-shm-usage")
-            options_retry.add_argument("--disable-gpu")
-            options_retry.add_argument("--start-maximized")
-            options_retry.page_load_strategy = "eager"
+            options_retry = build_chrome_options(chrome_binary)
 
             driver = uc.Chrome(options=options_retry, version_main=int(chrome_version), suppress_banner=True)
             driver.set_page_load_timeout(35)
