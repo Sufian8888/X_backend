@@ -4,6 +4,7 @@
   "private": true,
   "main": "server.js",
   "scripts": {
+    "postinstall": "npx puppeteer browsers install chrome",
     "start": "node server.js",
     "dev": "node server.js",
     "login": "node src/scripts/login.js"

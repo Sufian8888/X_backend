@@ -1,9 +1,30 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const puppeteer = require('puppeteer');
 
 const loginProfileDir = path.join(os.homedir(), '.x-poster-profile');
+
+function getPuppeteerExecutablePath() {
+  const originalPuppeteerPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const originalChromeBin = process.env.CHROME_BIN;
+
+  delete process.env.PUPPETEER_EXECUTABLE_PATH;
+  delete process.env.CHROME_BIN;
+  delete require.cache[require.resolve('puppeteer')];
+
+  const puppeteer = require('puppeteer');
+  const executablePath = puppeteer.executablePath();
+
+  if (originalPuppeteerPath) {
+    process.env.PUPPETEER_EXECUTABLE_PATH = originalPuppeteerPath;
+  }
+
+  if (originalChromeBin) {
+    process.env.CHROME_BIN = originalChromeBin;
+  }
+
+  return executablePath;
+}
 
 function resolveExecutablePath() {
   if (
@@ -26,23 +47,7 @@ function resolveExecutablePath() {
     }
   }
 
-  const originalPuppeteerPath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  const originalChromeBin = process.env.CHROME_BIN;
-
-  delete process.env.PUPPETEER_EXECUTABLE_PATH;
-  delete process.env.CHROME_BIN;
-
-  const executablePath = puppeteer.executablePath();
-
-  if (originalPuppeteerPath) {
-    process.env.PUPPETEER_EXECUTABLE_PATH = originalPuppeteerPath;
-  }
-
-  if (originalChromeBin) {
-    process.env.CHROME_BIN = originalChromeBin;
-  }
-
-  return executablePath;
+  return getPuppeteerExecutablePath();
 }
 
 function createTempProfileDir() {

@@ -2,7 +2,6 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const puppeteer = require('puppeteer');
 
 function resolvePythonExecutable() {
   const candidates = [
@@ -59,6 +58,28 @@ function findExecutableInDir(dir) {
   return null;
 }
 
+function getPuppeteerExecutablePath() {
+  const originalPuppeteerPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const originalChromeBin = process.env.CHROME_BIN;
+
+  delete process.env.PUPPETEER_EXECUTABLE_PATH;
+  delete process.env.CHROME_BIN;
+  delete require.cache[require.resolve('puppeteer')];
+
+  const puppeteer = require('puppeteer');
+  const executable = puppeteer.executablePath();
+
+  if (originalPuppeteerPath) {
+    process.env.PUPPETEER_EXECUTABLE_PATH = originalPuppeteerPath;
+  }
+
+  if (originalChromeBin) {
+    process.env.CHROME_BIN = originalChromeBin;
+  }
+
+  return executable;
+}
+
 function resolveChromeExecutable(env) {
   const configuredChrome = env.PUPPETEER_EXECUTABLE_PATH || env.CHROME_BIN;
 
@@ -80,20 +101,12 @@ function resolveChromeExecutable(env) {
     }
   }
 
-  const originalPuppeteerPath = process.env.PUPPETEER_EXECUTABLE_PATH;
-  const originalChromeBin = process.env.CHROME_BIN;
+  const executable = getPuppeteerExecutablePath();
 
-  delete process.env.PUPPETEER_EXECUTABLE_PATH;
-  delete process.env.CHROME_BIN;
-
-  const executable = puppeteer.executablePath();
-
-  if (originalPuppeteerPath) {
-    process.env.PUPPETEER_EXECUTABLE_PATH = originalPuppeteerPath;
-  }
-
-  if (originalChromeBin) {
-    process.env.CHROME_BIN = originalChromeBin;
+  if (!fs.existsSync(executable)) {
+    throw new Error(
+      `Chrome executable was not found. Resolved path: ${executable}. Clear Render build cache and redeploy.`
+    );
   }
 
   return executable;
