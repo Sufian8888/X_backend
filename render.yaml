@@ -1,9 +1,9 @@
 services:
   - type: web
     name: xautomate-backend
-    runtime: node
-    buildCommand: unset PUPPETEER_EXECUTABLE_PATH CHROME_BIN && PUPPETEER_CACHE_DIR=.cache/puppeteer npm ci && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
-    startCommand: npm start
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     envVars:
       - key: NODE_ENV
         value: production
