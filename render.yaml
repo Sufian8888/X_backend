@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: xautomate-backend
+    runtime: node
+    buildCommand: npm ci && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: POST_HEADLESS
+        value: "true"
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: xautomate
+      - key: X_USERNAME
+        sync: false
+      - key: X_PASSWORD
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
