@@ -26,7 +26,23 @@ function resolveExecutablePath() {
     }
   }
 
-  return puppeteer.executablePath();
+  const originalPuppeteerPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const originalChromeBin = process.env.CHROME_BIN;
+
+  delete process.env.PUPPETEER_EXECUTABLE_PATH;
+  delete process.env.CHROME_BIN;
+
+  const executablePath = puppeteer.executablePath();
+
+  if (originalPuppeteerPath) {
+    process.env.PUPPETEER_EXECUTABLE_PATH = originalPuppeteerPath;
+  }
+
+  if (originalChromeBin) {
+    process.env.CHROME_BIN = originalChromeBin;
+  }
+
+  return executablePath;
 }
 
 function createTempProfileDir() {

@@ -1,5 +1,6 @@
 const { execFileSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const puppeteer = require('puppeteer');
 
@@ -33,15 +34,76 @@ function getAutomationError(error) {
   return usefulLine || 'Python automation failed';
 }
 
+function findExecutableInDir(dir) {
+  if (!dir || !fs.existsSync(dir)) {
+    return null;
+  }
+
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isFile() && entry.name === 'chrome' && fullPath.includes('chrome-linux')) {
+      return fullPath;
+    }
+
+    if (entry.isDirectory()) {
+      const found = findExecutableInDir(fullPath);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return null;
+}
+
+function resolveChromeExecutable(env) {
+  const configuredChrome = env.PUPPETEER_EXECUTABLE_PATH || env.CHROME_BIN;
+
+  if (configuredChrome && fs.existsSync(configuredChrome)) {
+    return configuredChrome;
+  }
+
+  const cacheDirs = [
+    env.PUPPETEER_CACHE_DIR,
+    path.join(os.homedir(), '.cache', 'puppeteer'),
+    path.join(process.cwd(), '.cache', 'puppeteer'),
+    path.join(process.cwd(), 'node_modules', '.cache', 'puppeteer'),
+  ];
+
+  for (const cacheDir of cacheDirs) {
+    const executable = findExecutableInDir(cacheDir);
+    if (executable) {
+      return executable;
+    }
+  }
+
+  const originalPuppeteerPath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  const originalChromeBin = process.env.CHROME_BIN;
+
+  delete process.env.PUPPETEER_EXECUTABLE_PATH;
+  delete process.env.CHROME_BIN;
+
+  const executable = puppeteer.executablePath();
+
+  if (originalPuppeteerPath) {
+    process.env.PUPPETEER_EXECUTABLE_PATH = originalPuppeteerPath;
+  }
+
+  if (originalChromeBin) {
+    process.env.CHROME_BIN = originalChromeBin;
+  }
+
+  return executable;
+}
+
 function runXAutomation(args) {
   const pythonScript = path.join(__dirname, 'x_poster_undetected.py');
   const pythonExecutable = resolvePythonExecutable();
   const env = { ...process.env };
-  const configuredChrome = env.PUPPETEER_EXECUTABLE_PATH || env.CHROME_BIN;
-  const chromePath =
-    configuredChrome && fs.existsSync(configuredChrome)
-      ? configuredChrome
-      : puppeteer.executablePath();
+  const chromePath = resolveChromeExecutable(env);
 
   env.PUPPETEER_EXECUTABLE_PATH = chromePath;
   env.CHROME_BIN = chromePath;
