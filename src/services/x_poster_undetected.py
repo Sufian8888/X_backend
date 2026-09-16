@@ -10,6 +10,7 @@ import time
 import json
 import argparse
 import re
+import subprocess
 from urllib.parse import quote_plus
 from dotenv import load_dotenv
 import undetected_chromedriver as uc
@@ -155,10 +156,10 @@ def create_driver():
     except Exception as e:
         log(f"[!] First attempt failed: {str(e)[:100]}")
         log("[*] Retrying with version detection...")
-        import subprocess
         try:
+            chrome_command = chrome_binary or "google-chrome"
             chrome_version = subprocess.check_output(
-                ["/usr/bin/google-chrome", "--version"]
+                [chrome_command, "--version"]
             ).decode().split()[-1].split('.')[0]
             log(f"[*] Detected Chrome version: {chrome_version}")
 

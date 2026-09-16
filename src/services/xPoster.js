@@ -37,10 +37,14 @@ function runXAutomation(args) {
   const pythonScript = path.join(__dirname, 'x_poster_undetected.py');
   const pythonExecutable = resolvePythonExecutable();
   const env = { ...process.env };
+  const configuredChrome = env.PUPPETEER_EXECUTABLE_PATH || env.CHROME_BIN;
+  const chromePath =
+    configuredChrome && fs.existsSync(configuredChrome)
+      ? configuredChrome
+      : puppeteer.executablePath();
 
-  if (!env.PUPPETEER_EXECUTABLE_PATH) {
-    env.PUPPETEER_EXECUTABLE_PATH = puppeteer.executablePath();
-  }
+  env.PUPPETEER_EXECUTABLE_PATH = chromePath;
+  env.CHROME_BIN = chromePath;
 
   let output;
 
