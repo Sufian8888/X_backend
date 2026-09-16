@@ -14,6 +14,25 @@ function resolvePythonExecutable() {
   return candidates.find((candidate) => candidate === 'python3' || fs.existsSync(candidate));
 }
 
+function getAutomationError(error) {
+  const stderr = error.stderr ? String(error.stderr).trim() : '';
+  const stdout = error.stdout ? String(error.stdout).trim() : '';
+  const output = stderr || stdout;
+
+  if (!output) {
+    return 'Python automation failed';
+  }
+
+  const usefulLine = output
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .reverse()
+    .find((line) => !line.startsWith('File "') && !line.startsWith('Traceback'));
+
+  return usefulLine || 'Python automation failed';
+}
+
 function runXAutomation(args) {
   const pythonScript = path.join(__dirname, 'x_poster_undetected.py');
   const pythonExecutable = resolvePythonExecutable();
@@ -23,13 +42,19 @@ function runXAutomation(args) {
     env.PUPPETEER_EXECUTABLE_PATH = puppeteer.executablePath();
   }
 
-  const output = execFileSync(pythonExecutable, [pythonScript, ...args], {
-    cwd: path.join(__dirname, '../..'),
-    env,
-    encoding: 'utf-8',
-    timeout: 240000,
-    maxBuffer: 10 * 1024 * 1024,
-  });
+  let output;
+
+  try {
+    output = execFileSync(pythonExecutable, [pythonScript, ...args], {
+      cwd: path.join(__dirname, '../..'),
+      env,
+      encoding: 'utf-8',
+      timeout: 240000,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+  } catch (error) {
+    throw new Error(getAutomationError(error));
+  }
 
   const jsonLine = output
     .trim()
