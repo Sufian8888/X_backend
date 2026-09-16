@@ -6,7 +6,10 @@ const puppeteer = require('puppeteer');
 const loginProfileDir = path.join(os.homedir(), '.x-poster-profile');
 
 function resolveExecutablePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+  if (
+    process.env.PUPPETEER_EXECUTABLE_PATH &&
+    fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)
+  ) {
     return process.env.PUPPETEER_EXECUTABLE_PATH;
   }
 
@@ -23,7 +26,7 @@ function resolveExecutablePath() {
     }
   }
 
-  return undefined;
+  return puppeteer.executablePath();
 }
 
 function createTempProfileDir() {
