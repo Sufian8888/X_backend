@@ -28,6 +28,55 @@ load_dotenv()
 def log(message):
     print(message, file=sys.stderr)
 
+def set_input_value(driver, element, value, label):
+    try:
+        driver.execute_script(
+            "arguments[0].scrollIntoView({block: 'center', inline: 'center'});",
+            element
+        )
+        time.sleep(0.5)
+        element.click()
+        element.clear()
+        element.send_keys(value)
+        return
+    except WebDriverException as error:
+        log(f"[!] Native entry failed for {label}: {str(error).splitlines()[0]}")
+
+    driver.execute_script(
+        """
+        const input = arguments[0];
+        const value = arguments[1];
+        input.removeAttribute('inert');
+        input.focus();
+        input.value = value;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        """,
+        element,
+        value
+    )
+
+def submit_input(driver, element):
+    try:
+        element.send_keys(Keys.RETURN)
+        return
+    except WebDriverException as error:
+        log(f"[!] Enter key submit failed: {str(error).splitlines()[0]}")
+
+    driver.execute_script(
+        """
+        const input = arguments[0];
+        const form = input.closest('form');
+        if (form) {
+          form.requestSubmit ? form.requestSubmit() : form.submit();
+        } else {
+          input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+          input.dispatchEvent(new KeyboardEvent('keyup', {key: 'Enter', bubbles: true}));
+        }
+        """,
+        element
+    )
+
 def fill_login(driver, username, password):
     log("[*] Looking for username field...")
 
@@ -52,12 +101,9 @@ def fill_login(driver, username, password):
     if not username_field:
         raise Exception("Could not find username field")
 
-    username_field.click()
+    set_input_value(driver, username_field, username, "username field")
     time.sleep(1)
-    username_field.clear()
-    username_field.send_keys(username)
-    time.sleep(1)
-    username_field.send_keys(Keys.RETURN)
+    submit_input(driver, username_field)
     time.sleep(3)
 
     log("[*] Looking for password field...")
@@ -82,12 +128,9 @@ def fill_login(driver, username, password):
     if not password_field:
         raise Exception("Could not find password field")
 
-    password_field.click()
+    set_input_value(driver, password_field, password, "password field")
     time.sleep(1)
-    password_field.clear()
-    password_field.send_keys(password)
-    time.sleep(1)
-    password_field.send_keys(Keys.RETURN)
+    submit_input(driver, password_field)
     time.sleep(5)
 
 def click_resiliently(driver, element, label="element"):
