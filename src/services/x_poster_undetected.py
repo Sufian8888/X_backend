@@ -213,6 +213,39 @@ def safe_get(driver, url, label):
         except Exception:
             pass
 
+def is_logged_in(driver):
+    if '/login' in driver.current_url or '/i/flow/login' in driver.current_url:
+        return False
+
+    logged_in_selectors = [
+        "[data-testid='SideNav_NewTweet_Button']",
+        "[data-testid='AppTabBar_Home_Link']",
+        "a[href='/compose/post']",
+        "a[href='/home']",
+    ]
+
+    for selector in logged_in_selectors:
+        try:
+            if driver.find_elements(By.CSS_SELECTOR, selector):
+                return True
+        except Exception:
+            continue
+
+    return False
+
+def find_first_clickable(driver, selectors, timeout=5):
+    for selector in selectors:
+        try:
+            element = WebDriverWait(driver, timeout).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+            )
+            log(f"[+] Found element with selector: {selector}")
+            return element
+        except Exception:
+            continue
+
+    return None
+
 def wait_until_enabled(driver, element, label):
     log(f"[*] Waiting for {label} to become enabled...")
     WebDriverWait(driver, 20).until(
@@ -508,15 +541,19 @@ def post_to_x(text, username=None, password=None):
         try:
             fill_login(driver, username, password)
             log("[*] Login attempt completed, waiting for page load...")
-            time.sleep(3)
+            time.sleep(6)
 
         except Exception as e:
-            log(f"[!] Login error (may need manual completion): {str(e)}")
-            # Continue anyway - user might already be logged in from previous session
+            raise Exception(f"Login failed before posting: {str(e)}")
+
+        if not is_logged_in(driver):
+            raise Exception(
+                "X login did not complete. Check credentials, 2FA, verification challenge, or account lock."
+            )
 
         # Navigate to home/compose
-        log("[*] Navigating to X home...")
-        safe_get(driver, 'https://x.com/home', 'X home')
+        log("[*] Navigating to X compose...")
+        safe_get(driver, 'https://x.com/compose/post', 'X compose')
         time.sleep(3)
 
         # Look for the post composer
@@ -524,24 +561,23 @@ def post_to_x(text, username=None, password=None):
 
         composer_selectors = [
             "[data-testid='tweetTextarea_0']",
+            "[data-testid='tweetTextarea_1']",
+            "div[aria-label='Post text'][contenteditable='true']",
             "[role='textbox']",
             "[data-testid='tweet']",
             "div[contenteditable='true']"
         ]
 
-        composer = None
-        for selector in composer_selectors:
-            try:
-                composer = WebDriverWait(driver, 5).until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
-                )
-                log(f"[+] Found composer with selector: {selector}")
-                break
-            except Exception:
-                continue
+        composer = find_first_clickable(driver, composer_selectors, timeout=7)
 
         if not composer:
-            raise Exception("Could not find post composer - may not be logged in")
+            log("[!] Compose route did not show composer; trying X home...")
+            safe_get(driver, 'https://x.com/home', 'X home')
+            time.sleep(3)
+            composer = find_first_clickable(driver, composer_selectors, timeout=7)
+
+        if not composer:
+            raise Exception("Could not find post composer after successful login")
 
         # Click and type the post
         log(f"[*] Clicking composer and typing post: {text[:50]}...")
